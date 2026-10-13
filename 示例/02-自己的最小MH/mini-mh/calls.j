@@ -1,0 +1,159 @@
+//! nocjass
+native MergeUnits takes integer qty, integer a, integer b, integer make returns boolean
+native IgnoredUnits takes integer unitid returns integer
+library MiniMHCalls requires MiniMHMemory
+    globals
+        integer MiniMH_CallBuffer = 0
+        integer MiniMH_CallSlot = 0
+        boolean MiniMH_CallSlotsSafe = true
+    endglobals
+    // Find a native's writable function pointer, without changing it yet.
+    function MiniMH_FindNativeSlot takes integer target returns integer
+        local integer env = MiniMH_ReadDword(MiniMH_GameBase + MINIMH_JASS_ENV_RVA)
+        local integer table = 0
+        local integer first = 0
+        local integer node = 0
+        local integer count = 0
+        if env == 0 then
+            return 0
+        endif
+        set table = MiniMH_ReadDword(env + 0x14)
+        if table == 0 then
+            return 0
+        endif
+        set first = MiniMH_ReadDword(table + 0x20)
+        set node = first
+        loop
+            exitwhen node == 0 or count >= 4096
+            if MiniMH_ReadDword(node + 0xC) == target then
+                return node + 0xC
+            endif
+            set node = MiniMH_ReadDword(node)
+            set count = count + 1
+            exitwhen node == first
+        endloop
+        return 0
+    endfunction
+    function MiniMH_RestoreNativeSlot takes integer slot, integer saved returns boolean
+        if MiniMH_WriteDword(slot, saved) then
+            return true
+        endif
+        if MiniMH_ReadDword(slot) == saved then
+            return true
+        endif
+        set MiniMH_CallSlotsSafe = false
+        set MiniMH_Ready = false
+        return false
+    endfunction
+    function MiniMH_InitCalls takes nothing returns boolean
+        local integer allocSlot = MiniMH_FindNativeSlot(MiniMH_GameBase + MINIMH_MERGE_UNITS_RVA)
+        local integer saved = 0
+        local integer alloc = MiniMH_ReadDword(MiniMH_GameBase + MINIMH_VIRTUAL_ALLOC_IAT_RVA)
+        if not MiniMH_CallSlotsSafe then
+            set MiniMH_LastError = "Native slot restoration was not verified"
+            return false
+        endif
+        if MiniMH_CallBuffer != 0 then
+            return true
+        endif
+        set MiniMH_CallSlot = MiniMH_FindNativeSlot(MiniMH_GameBase + MINIMH_IGNORED_UNITS_RVA)
+        if allocSlot == 0 or MiniMH_CallSlot == 0 or alloc == 0 then
+            set MiniMH_LastError = "Native slots / VirtualAlloc not found"
+            return false
+        endif
+        set saved = MiniMH_ReadDword(allocSlot)
+        if saved == 0 then
+            set MiniMH_LastError = "Cannot read original MergeUnits pointer"
+            return false
+        endif
+        if not MiniMH_WriteDword(allocSlot, alloc) then
+            if not MiniMH_RestoreNativeSlot(allocSlot, saved) then
+                set MiniMH_LastError = "Cannot redirect or restore MergeUnits"
+   else
+                set MiniMH_LastError = "Cannot redirect MergeUnits; slot restored"
+            endif
+            return false
+        endif
+        set MiniMH_CallBuffer = MiniMH_BooleanBits(MergeUnits(0, 64, 0x3000, 0x40))
+        if not MiniMH_RestoreNativeSlot(allocSlot, saved) then
+            set MiniMH_LastError = "Cannot restore MergeUnits"
+            return false
+        endif
+        if MiniMH_CallBuffer == 0 then
+            set MiniMH_LastError = "VirtualAlloc failed"
+            return false
+        endif
+        return true
+    endfunction
+    // x86 fastcall: ECX=sprite, EDX=alpha, stack=0. Matches upstream fast_call_3.
+    function MiniMH_CallSetAlpha takes integer sprite, integer alpha returns boolean
+        local integer saved = 0
+        local integer result = 0
+        if MiniMH_CallBuffer == 0 or MiniMH_CallSlot == 0 then
+            set MiniMH_LastError = "Call buffer / native slot is unavailable"
+            return false
+        endif
+        if not MiniMH_CallSlotsSafe then
+            set MiniMH_LastError = "Native slot restoration was not verified"
+            return false
+        endif
+        set saved = MiniMH_ReadDword(MiniMH_CallSlot)
+        if saved == 0 then
+            set MiniMH_LastError = "Cannot read original IgnoredUnits pointer"
+            return false
+        endif
+        // Aligned immediate operands at +4, +12, +20, +28.
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 0, 0x68909056) then
+            set MiniMH_LastError = "Cannot write alpha thunk (0)"
+            return false
+        endif
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 4, 0) then
+            set MiniMH_LastError = "Cannot write alpha thunk (4)"
+            return false
+        endif
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 8, 0xBA909090) then
+            set MiniMH_LastError = "Cannot write alpha thunk (8)"
+            return false
+        endif
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 12, alpha) then
+            set MiniMH_LastError = "Cannot write alpha thunk (12)"
+            return false
+        endif
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 16, 0xB9909090) then
+            set MiniMH_LastError = "Cannot write alpha thunk (16)"
+            return false
+        endif
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 20, sprite) then
+            set MiniMH_LastError = "Cannot write alpha thunk (20)"
+            return false
+        endif
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 24, 0xBE909090) then
+            set MiniMH_LastError = "Cannot write alpha thunk (24)"
+            return false
+        endif
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 28, MiniMH_GameBase + MINIMH_SET_ALPHA_RVA) then
+            set MiniMH_LastError = "Cannot write alpha thunk (28)"
+            return false
+        endif
+        // call esi; pop esi; ret. The native dispatch retains its own argument frame.
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 32, 0xC35ED6FF) then
+            set MiniMH_LastError = "Cannot write alpha thunk (32)"
+            return false
+        endif
+        if not MiniMH_WriteDword(MiniMH_CallSlot, MiniMH_CallBuffer) then
+            if not MiniMH_RestoreNativeSlot(MiniMH_CallSlot, saved) then
+                set MiniMH_LastError = "Cannot redirect or restore IgnoredUnits"
+   else
+                set MiniMH_LastError = "Cannot redirect IgnoredUnits; slot restored"
+            endif
+            return false
+        endif
+        set result = IgnoredUnits(0)
+        if not MiniMH_RestoreNativeSlot(MiniMH_CallSlot, saved) then
+            set MiniMH_LastError = "Cannot restore IgnoredUnits"
+            return false
+        endif
+        return true
+    endfunction
+endlibrary
+//! endnocjass

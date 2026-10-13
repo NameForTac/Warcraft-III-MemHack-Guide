@@ -1,29 +1,23 @@
 //! nocjass
-library MiniMHEntry requires MiniMHCore, MiniMHVersion127a, MiniMHMemory, MiniMHHandleTable, MiniMHEffectAlpha
+library MiniMHEntry requires MiniMHCore, MiniMHMemory, MiniMHHandleTable, MiniMHCalls, MiniMHEffectAlpha
     function MiniMH_Init takes nothing returns boolean
-        set MiniMH_Ready = false
-
-        if not MiniMH_CheckVersion127a() then
-            return false
+        if MiniMH_Ready then
+            return true
         endif
-
         if not MiniMH_InitMemoryBridge() then
             return false
         endif
-
         if not MiniMH_InitHandleTable() then
             return false
         endif
-
-        set MiniMH_Ready = true
-        return true
-    endfunction
-
-    function MiniMH_DemoSetAlpha takes effect e returns boolean
-        if not MiniMH_Ready then
+        if not MiniMH_InitCalls() then
             return false
         endif
-
+        set MiniMH_Ready = true
+        set MiniMH_LastError = "OK"
+        return true
+    endfunction
+    function MiniMH_DemoSetAlpha takes effect e returns boolean
         return MiniMH_SetEffectAlpha(e, 128)
     endfunction
 endlibrary
