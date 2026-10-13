@@ -1,9 +1,5 @@
 //! nocjass
-library MiniMHEntry
-    globals
-        boolean MiniMH_Ready = false
-    endglobals
-
+library MiniMHEntry requires MiniMHCore, MiniMHVersion127a, MiniMHMemory, MiniMHHandleTable, MiniMHEffectAlpha
     function MiniMH_Init takes nothing returns boolean
         set MiniMH_Ready = false
 

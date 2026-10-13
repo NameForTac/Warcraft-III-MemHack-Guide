@@ -1,5 +1,5 @@
 //! nocjass
-library MiniMHHandleTable
+library MiniMHHandleTable requires MiniMHVersion127a, MiniMHMemory
     globals
         boolean MiniMH_HandleTableReady = false
     endglobals

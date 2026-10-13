@@ -1,5 +1,5 @@
 //! nocjass
-library MiniMHEffectAlpha
+library MiniMHEffectAlpha requires MiniMHCore, MiniMHVersion127a, MiniMHMemory, MiniMHHandleTable
     function MiniMH_SetEffectAlpha takes effect e, integer alpha returns boolean
         local integer pObject = 0
         local integer pSprite = 0
