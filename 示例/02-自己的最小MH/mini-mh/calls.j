@@ -137,6 +137,7 @@ library MiniMHCalls requires MiniMHMemory
             set MiniMH_LastError = "Cannot write alpha thunk (32)"
             return false
         endif
+        call MiniMH_Log("透明度机器码共 36 字节已逐项写入并回读一致，精灵=" + I2S(sprite) + "，透明度=" + I2S(alpha))
         if not MiniMH_WriteDword(MiniMH_CallSlot, MiniMH_CallBuffer) then
             if not MiniMH_RestoreNativeSlot(MiniMH_CallSlot, saved) then
                 set MiniMH_LastError = "Cannot redirect or restore IgnoredUnits"
@@ -145,11 +146,14 @@ library MiniMHCalls requires MiniMHMemory
             endif
             return false
         endif
+        call MiniMH_Log("原生入口重定向回读通过，即将执行透明度机器码。")
         set result = IgnoredUnits(0)
+        call MiniMH_Log("透明度机器码调用已返回，开始恢复原生入口。")
         if not MiniMH_RestoreNativeSlot(MiniMH_CallSlot, saved) then
             set MiniMH_LastError = "Cannot restore IgnoredUnits"
             return false
         endif
+        call MiniMH_Log("原生入口已恢复并回读一致。")
         return true
     endfunction
 endlibrary
