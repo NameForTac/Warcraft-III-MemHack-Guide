@@ -1,6 +1,6 @@
 //! nocjass
 library MiniMHEffectAlpha requires MiniMHCore, MiniMHVersion127a, MiniMHMemory, MiniMHHandleTable, MiniMHCalls
-    function MiniMH_SetEffectAlpha takes effect e, integer alpha returns boolean // 设置特效透明度；返回值表示调用流程是否报告成功。
+    function MiniMH_SetEffectAlpha takes effect e, integer alpha returns boolean // 设置 0..255 透明度；返回调用流程结果，不回读透明度字段。
         local integer object = 0
         local integer sprite = 0
         if not MiniMH_Ready or e == null or alpha < 0 or alpha > 255 then

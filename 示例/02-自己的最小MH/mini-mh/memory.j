@@ -5,7 +5,7 @@ library MiniMHMemory requires MiniMHCore, MiniMHVersion127a, MiniMHTypecast
         integer Memory
         integer array l__Memory
     endglobals
-    function MiniMH_RawRead takes integer address returns integer // 通过映射到进程内存的数组读取一个 32 位整数。
+    function MiniMH_RawRead takes integer address returns integer // 原始四字节读取；函数布局用于提取变量标识，不要插入日志。
         return l__Memory[address / 4]
     endfunction
     //# +nosemanticerror
@@ -39,7 +39,7 @@ library MiniMHMemory requires MiniMHCore, MiniMHVersion127a, MiniMHTypecast
         return true
     endfunction
     //# +nosemanticerror
-    function MiniMH_BootstrapMemory takes nothing returns nothing // 由代码地址 +8 进入，跳过局部数组声明。
+    function MiniMH_BootstrapMemory takes nothing returns nothing // 仅由包装函数从地址 +8 进入，跳过局部数组 i 的声明。
         local integer array i
         local integer vtable = 0
         local integer variableId = 0
@@ -77,7 +77,7 @@ library MiniMHMemory requires MiniMHCore, MiniMHVersion127a, MiniMHTypecast
         endif
         return
     endfunction
-    function MiniMH_InitMemoryBridge takes nothing returns boolean // 使用非空 force 执行原版启动入口方式。
+    function MiniMH_InitMemoryBridge takes nothing returns boolean // 公开初始化入口：创建非空 force，从启动函数 +8 执行并返回状态。
         local force runner = null
         if MiniMH_MemoryBridgeReady then
             return true

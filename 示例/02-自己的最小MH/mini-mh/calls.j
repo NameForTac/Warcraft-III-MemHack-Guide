@@ -84,7 +84,7 @@ library MiniMHCalls requires MiniMHMemory
         endif
         return true
     endfunction
-    // 此处按 x86 fastcall 约定构造调用：ECX 放精灵指针，EDX 放透明度，其余参数由机器码安排；约定需目标版本实测确认。
+    // 调用参数：ECX=精灵指针，EDX=透明度，栈参数=0；当前环境已验证调用返回，视觉效果待确认。
     function MiniMH_CallSetAlpha takes integer sprite, integer alpha returns boolean // 写入并执行内部透明度调用的 x86 机器码，再恢复原生函数指针。
         local integer saved = 0
         local integer result = 0
@@ -101,39 +101,39 @@ library MiniMHCalls requires MiniMHMemory
             set MiniMH_LastError = "Cannot read original IgnoredUnits pointer"
             return false
         endif
-        if not MiniMH_WriteDword(MiniMH_CallBuffer + 0, 0x68909056) then // 写入 push esi、两个 nop 和 push imm32 的操作码字节，保存 ESI 并准备压入参数。写入失败时进入错误分支。
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 0, 0x68909056) then // 写入 push esi、两个 nop 和 push imm32 的操作码字节，保存 ESI 并准备压入参数。
             set MiniMH_LastError = "Cannot write alpha thunk (0)"
             return false
         endif
-        if not MiniMH_WriteDword(MiniMH_CallBuffer + 4, 0) then // 写入 push imm32 的立即数 0，作为栈上的附加参数。写入失败时进入错误分支。
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 4, 0) then // 写入 push imm32 的立即数 0，作为栈上的附加参数。
             set MiniMH_LastError = "Cannot write alpha thunk (4)"
             return false
         endif
-        if not MiniMH_WriteDword(MiniMH_CallBuffer + 8, 0xBA909090) then // 写入三个 nop 和 mov edx, imm32 的操作码。写入失败时进入错误分支。
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 8, 0xBA909090) then // 写入三个 nop 和 mov edx, imm32 的操作码。
             set MiniMH_LastError = "Cannot write alpha thunk (8)"
             return false
         endif
-        if not MiniMH_WriteDword(MiniMH_CallBuffer + 12, alpha) then // 写入透明度立即数，供 EDX 寄存器加载。写入失败时进入错误分支。
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 12, alpha) then // 写入透明度立即数，供 EDX 寄存器加载。
             set MiniMH_LastError = "Cannot write alpha thunk (12)"
             return false
         endif
-        if not MiniMH_WriteDword(MiniMH_CallBuffer + 16, 0xB9909090) then // 写入三个 nop 和 mov ecx, imm32 的操作码。写入失败时进入错误分支。
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 16, 0xB9909090) then // 写入三个 nop 和 mov ecx, imm32 的操作码。
             set MiniMH_LastError = "Cannot write alpha thunk (16)"
             return false
         endif
-        if not MiniMH_WriteDword(MiniMH_CallBuffer + 20, sprite) then // 写入精灵指针立即数，供 ECX 寄存器加载。写入失败时进入错误分支。
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 20, sprite) then // 写入精灵指针立即数，供 ECX 寄存器加载。
             set MiniMH_LastError = "Cannot write alpha thunk (20)"
             return false
         endif
-        if not MiniMH_WriteDword(MiniMH_CallBuffer + 24, 0xBE909090) then // 写入三个 nop 和 mov esi, imm32 的操作码。写入失败时进入错误分支。
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 24, 0xBE909090) then // 写入三个 nop 和 mov esi, imm32 的操作码。
             set MiniMH_LastError = "Cannot write alpha thunk (24)"
             return false
         endif
-        if not MiniMH_WriteDword(MiniMH_CallBuffer + 28, MiniMH_GameBase + MINIMH_SET_ALPHA_RVA) then // 写入内部透明度函数的绝对地址，供 ESI 寄存器加载。写入失败时进入错误分支。
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 28, MiniMH_GameBase + MINIMH_SET_ALPHA_RVA) then // 写入内部透明度函数的绝对地址，供 ESI 寄存器加载。
             set MiniMH_LastError = "Cannot write alpha thunk (28)"
             return false
         endif
-        if not MiniMH_WriteDword(MiniMH_CallBuffer + 32, 0xC35ED6FF) then // 写入 call esi、pop esi、ret 的字节，调用目标并恢复寄存器后返回。写入失败时进入错误分支。
+        if not MiniMH_WriteDword(MiniMH_CallBuffer + 32, 0xC35ED6FF) then // 写入 call esi、pop esi、ret 的字节，调用目标并恢复寄存器后返回。
             set MiniMH_LastError = "Cannot write alpha thunk (32)"
             return false
         endif
